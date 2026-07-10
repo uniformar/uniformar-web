@@ -193,9 +193,10 @@ button, input, select, textarea { font-family: inherit; font-size: 1rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: var(--navy); color: var(--white); padding: 12px 22px; border-radius: 999px;
+  background: var(--navy); color: var(--white); padding: 12px 22px; border-radius: 16px;
   font-weight: 600; font-size: .9rem; z-index: 200; box-shadow: var(--shadow-lg);
   opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+  max-width: min(92vw, 480px); text-align: center; line-height: 1.4;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
 .toast.error { background: #c0392b; }

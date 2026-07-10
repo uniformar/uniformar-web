@@ -6,11 +6,12 @@
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   const uid = () => "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-  function toast(msg, isError) {
+  function toast(msg, isError, longer) {
     const t = $("#toast");
     t.textContent = msg;
     t.className = "toast show" + (isError ? " error" : "");
-    setTimeout(() => (t.className = "toast"), 3200);
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(() => (t.className = "toast"), longer ? 7500 : 3200);
   }
 
   /* ---------------- LOGIN ---------------- */
@@ -70,18 +71,19 @@
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: state.pw, config: state.config, products: state.products })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 401) { toast("Sesión inválida, volvé a ingresar.", true); sessionStorage.removeItem("uniformar_admin_pw"); location.reload(); return; }
-        throw new Error(data.error || "Error al guardar");
+        const msg = (data.error || "Error al guardar") + (data.detail ? " — " + data.detail : "");
+        throw new Error(msg);
       }
       toast(successMsg || "Guardado ✓");
     } catch (err) {
-      toast("No se pudo guardar: " + err.message, true);
+      toast(err.message || "No se pudo guardar. Revisá tu conexión.", true, true);
     }
   }
 
-  /* ---------------- CONFIG ---------------- */
+  /* ---------------- CONFIG: DATOS DE CONTACTO ---------------- */
   function renderConfig() {
     const c = state.config;
     $("#cfg-nombre").value = c.nombreTienda || "";
@@ -90,6 +92,15 @@
     $("#cfg-instagram").value = c.instagram || "";
     $("#cfg-ubicacion").value = c.ubicacion || "";
     $("#cfg-envios").value = c.mensajeEnvios || "";
+
+    $("#cfg-herotitulo").value = c.heroTitulo || "";
+    $("#cfg-herotag").value = c.heroTagline || "";
+    $("#cfg-colorprimario").value = c.colorPrimario || "#05396C";
+    $("#cfg-colorprimario-hex").value = c.colorPrimario || "#05396C";
+    $("#cfg-coloracento").value = c.colorAcento || "#00AEEF";
+    $("#cfg-coloracento-hex").value = c.colorAcento || "#00AEEF";
+    $("#cfg-mostrarprecios").checked = c.mostrarPrecios !== false;
+    $("#logo-preview-img").src = c.logoDataUrl || "images/logo.png";
   }
 
   $("#save-config-btn").addEventListener("click", () => {
@@ -102,7 +113,73 @@
       ubicacion: $("#cfg-ubicacion").value.trim(),
       mensajeEnvios: $("#cfg-envios").value.trim()
     };
-    saveAll("Datos de la tienda guardados ✓");
+    saveAll("Datos de contacto guardados ✓");
+    renderConfig();
+  });
+
+  /* ---------------- CONFIG: APARIENCIA ---------------- */
+  function linkColorPair(colorId, hexId) {
+    $(colorId).addEventListener("input", () => { $(hexId).value = $(colorId).value; });
+    $(hexId).addEventListener("input", () => {
+      const v = $(hexId).value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) $(colorId).value = v;
+    });
+  }
+  linkColorPair("#cfg-colorprimario", "#cfg-colorprimario-hex");
+  linkColorPair("#cfg-coloracento", "#cfg-coloracento-hex");
+
+  function resizeImagePng(file, maxDim) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio); height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  $("#cfg-logo-input").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImagePng(file, 500);
+      state.config.logoDataUrl = dataUrl;
+      $("#logo-preview-img").src = dataUrl;
+      toast("Logo cargado. Tocá \"Guardar apariencia\" para publicarlo.");
+    } catch (err) {
+      toast("No se pudo procesar la imagen del logo", true);
+    }
+  });
+  $("#cfg-logo-reset").addEventListener("click", () => {
+    state.config.logoDataUrl = "";
+    $("#logo-preview-img").src = "images/logo.png";
+    toast("Logo restaurado al original. Tocá \"Guardar apariencia\" para publicarlo.");
+  });
+
+  $("#save-apariencia-btn").addEventListener("click", () => {
+    state.config = {
+      ...state.config,
+      heroTitulo: $("#cfg-herotitulo").value.trim() || "UNIFORMAR",
+      heroTagline: $("#cfg-herotag").value.trim(),
+      colorPrimario: $("#cfg-colorprimario-hex").value.trim() || "#05396C",
+      colorAcento: $("#cfg-coloracento-hex").value.trim() || "#00AEEF",
+      mostrarPrecios: $("#cfg-mostrarprecios").checked
+    };
+    saveAll("Apariencia guardada ✓");
     renderConfig();
   });
 
@@ -119,8 +196,12 @@
       list.innerHTML = `<p style="color:var(--muted);">Todavía no cargaste productos. Tocá "+ Nuevo producto" para empezar.</p>`;
       return;
     }
-    list.innerHTML = state.products.map((p) => `
+    list.innerHTML = state.products.map((p, i) => `
       <div class="product-row">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <button class="btn btn-outline btn-sm" style="padding:2px 8px;" data-moveup="${i}" ${i === 0 ? "disabled" : ""}>▲</button>
+          <button class="btn btn-outline btn-sm" style="padding:2px 8px;" data-movedown="${i}" ${i === state.products.length - 1 ? "disabled" : ""}>▼</button>
+        </div>
         ${p.imagenes && p.imagenes[0] ? `<img src="${p.imagenes[0]}">` : `<div style="width:52px;height:52px;border-radius:8px;background:var(--arena);"></div>`}
         <div style="flex:1;">
           <span class="pname">${p.nombre || "(sin nombre)"}</span>${p.activo === false ? '<span class="tag-off">Oculto</span>' : ""}
@@ -131,6 +212,16 @@
       </div>`).join("");
     $$("[data-edit]", list).forEach((b) => b.addEventListener("click", () => openProductModal(b.getAttribute("data-edit"))));
     $$("[data-del]", list).forEach((b) => b.addEventListener("click", () => deleteProduct(b.getAttribute("data-del"))));
+    $$("[data-moveup]", list).forEach((b) => b.addEventListener("click", () => moveProduct(+b.getAttribute("data-moveup"), -1)));
+    $$("[data-movedown]", list).forEach((b) => b.addEventListener("click", () => moveProduct(+b.getAttribute("data-movedown"), 1)));
+  }
+
+  function moveProduct(index, dir) {
+    const j = index + dir;
+    if (j < 0 || j >= state.products.length) return;
+    [state.products[index], state.products[j]] = [state.products[j], state.products[index]];
+    renderProductList();
+    saveAll("Orden actualizado ✓");
   }
 
   function deleteProduct(id) {
@@ -209,7 +300,15 @@
   function renderProductModal() {
     const p = state.editing;
     const imgsHtml = (p.imagenes || []).map((im, i) => `
-      <div class="img-item"><img src="${im}"><button class="rm" data-rmimg="${i}">✕</button></div>`).join("");
+      <div class="img-item">
+        <img src="${im}">
+        ${i === 0 ? '<span class="badge" style="position:absolute;bottom:4px;left:4px;top:auto;font-size:.6rem;padding:2px 6px;">Portada</span>' : ""}
+        <button class="rm" data-rmimg="${i}">✕</button>
+        <div style="position:absolute;bottom:4px;right:4px;display:flex;gap:2px;">
+          ${i > 0 ? `<button class="btn btn-outline btn-sm" style="padding:1px 6px;font-size:.7rem;background:#fff;" data-imgleft="${i}">◀</button>` : ""}
+          ${i < (p.imagenes.length - 1) ? `<button class="btn btn-outline btn-sm" style="padding:1px 6px;font-size:.7rem;background:#fff;" data-imgright="${i}">▶</button>` : ""}
+        </div>
+      </div>`).join("");
 
     const coloresHtml = (p.colores || []).map((c, ci) => `
       <div class="color-block" data-color-idx="${ci}">
@@ -251,7 +350,7 @@
           <div class="field"><label>Descripción</label><textarea id="p-desc" placeholder="Tela, calce, detalles...">${p.descripcion || ""}</textarea></div>
 
           <div class="field">
-            <label>Fotos</label>
+            <label>Fotos <span style="font-weight:400;color:var(--muted);">(la primera es la portada)</span></label>
             <div class="imgs-grid" id="imgs-grid">${imgsHtml}</div>
             <label class="upload-box">📷 Subir foto(s)<input type="file" id="p-img-input" accept="image/*" multiple style="display:none;"></label>
           </div>
@@ -282,6 +381,18 @@
       renderProductModal();
     });
     $$("[data-rmimg]").forEach((b) => b.addEventListener("click", () => { syncFieldsToEditing(); p.imagenes.splice(+b.getAttribute("data-rmimg"), 1); renderProductModal(); }));
+    $$("[data-imgleft]").forEach((b) => b.addEventListener("click", () => {
+      syncFieldsToEditing();
+      const i = +b.getAttribute("data-imgleft");
+      [p.imagenes[i - 1], p.imagenes[i]] = [p.imagenes[i], p.imagenes[i - 1]];
+      renderProductModal();
+    }));
+    $$("[data-imgright]").forEach((b) => b.addEventListener("click", () => {
+      syncFieldsToEditing();
+      const i = +b.getAttribute("data-imgright");
+      [p.imagenes[i + 1], p.imagenes[i]] = [p.imagenes[i], p.imagenes[i + 1]];
+      renderProductModal();
+    }));
 
     $("#add-color-btn").addEventListener("click", () => { syncFieldsToEditing(); p.colores.push({ nombre: "", hex: "#05396C", talles: [{ talle: "", stock: "", precio: "" }] }); renderProductModal(); });
     $$("[data-rmcolor]").forEach((b) => b.addEventListener("click", () => { syncFieldsToEditing(); p.colores.splice(+b.getAttribute("data-rmcolor"), 1); renderProductModal(); }));

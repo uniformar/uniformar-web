@@ -19,6 +19,7 @@
   }
 
   function priceRange(p) {
+    if (state.config && state.config.mostrarPrecios === false) return "Consultar precio";
     const prices = [];
     (p.colores || []).forEach((c) => (c.talles || []).forEach((t) => { if (t.precio) prices.push(Number(t.precio)); }));
     if (!prices.length) return "Consultar";
@@ -56,6 +57,9 @@
   function applyBranding() {
     const c = state.config;
     document.title = `${c.nombreTienda || "UniformAR"} · Ambos y uniformes de salud`;
+    $("#hero-title").textContent = c.heroTitulo || "UNIFORMAR";
+    $("#hero-tag").textContent = c.heroTagline || "";
+    $("#hero-tag").style.display = c.heroTagline ? "" : "none";
     $("#hero-desc").textContent = c.descripcion || "";
     $("#foot-desc").textContent = c.descripcion || "";
     $("#foot-wa").textContent = "WhatsApp: " + (c.whatsapp ? "+" + c.whatsapp : "—");
@@ -67,6 +71,11 @@
     ["#wa-link", "#wa-link-2"].forEach((s) => ($(s).href = wa));
     if (c.colorPrimario) document.documentElement.style.setProperty("--navy", c.colorPrimario);
     if (c.colorAcento) document.documentElement.style.setProperty("--azul", c.colorAcento);
+    if (c.logoDataUrl) {
+      document.querySelectorAll(".brand-logo-img").forEach((img) => (img.src = c.logoDataUrl));
+    }
+    const precioOpts = $("#f-orden").querySelectorAll('option[value^="precio"]');
+    precioOpts.forEach((o) => (o.hidden = c.mostrarPrecios === false));
   }
 
   function buildFilterOptions() {
@@ -87,11 +96,18 @@
 
   function norm(s) { return (s || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
 
+  function minPrice(p) {
+    const prices = [];
+    (p.colores || []).forEach((c) => (c.talles || []).forEach((t) => { if (t.precio) prices.push(Number(t.precio)); }));
+    return prices.length ? Math.min(...prices) : Infinity;
+  }
+
   function applyFilters() {
     const q = norm($("#f-search").value.trim());
     const cat = $("#f-categoria").value;
     const talle = $("#f-talle").value;
     const color = $("#f-color").value;
+    const orden = $("#f-orden").value;
 
     state.filtered = state.products.filter((p) => {
       if (q && !norm(p.nombre + " " + p.categoria).includes(q)) return false;
@@ -101,7 +117,12 @@
       return true;
     });
 
-    const anyFilter = q || cat || talle || color;
+    if (orden === "nombre") state.filtered.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+    else if (orden === "precio-asc") state.filtered.sort((a, b) => minPrice(a) - minPrice(b));
+    else if (orden === "precio-desc") state.filtered.sort((a, b) => minPrice(b) - minPrice(a));
+    // "orden" (por defecto) respeta el orden cargado en el panel de administración
+
+    const anyFilter = q || cat || talle || color || (orden && orden !== "orden");
     $("#f-clear").style.display = anyFilter ? "inline" : "none";
     renderGrid();
   }
@@ -174,7 +195,8 @@
     }).join("");
 
     const selTalleObj = talles.find((t) => t.talle === state.selTalle);
-    const priceShown = selTalleObj ? fmt.format(Number(selTalleObj.precio || 0)) : priceRange(p);
+    const preciosOn = !(state.config && state.config.mostrarPrecios === false);
+    const priceShown = !preciosOn ? "Consultar precio" : (selTalleObj ? fmt.format(Number(selTalleObj.precio || 0)) : priceRange(p));
 
     let stockMsg = "";
     if (selTalleObj) {
@@ -235,12 +257,12 @@
     }));
   }
 
-  ["#f-search", "#f-categoria", "#f-talle", "#f-color"].forEach((sel) => {
+  ["#f-search", "#f-categoria", "#f-talle", "#f-color", "#f-orden"].forEach((sel) => {
     document.addEventListener("input", (e) => { if (e.target.matches(sel)) applyFilters(); });
     document.addEventListener("change", (e) => { if (e.target.matches(sel)) applyFilters(); });
   });
   $("#f-clear").addEventListener("click", () => {
-    $("#f-search").value = ""; $("#f-categoria").value = ""; $("#f-talle").value = ""; $("#f-color").value = "";
+    $("#f-search").value = ""; $("#f-categoria").value = ""; $("#f-talle").value = ""; $("#f-color").value = ""; $("#f-orden").value = "orden";
     applyFilters();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });

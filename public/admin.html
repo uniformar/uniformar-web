@@ -90,7 +90,34 @@
   <div class="admin-wrap">
 
     <div class="panel">
-      <h2>Datos de la tienda</h2>
+      <h2>Apariencia de la tienda</h2>
+      <div class="field">
+        <label>Logo</label>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div id="logo-preview" style="width:70px;height:70px;border-radius:12px;background:var(--arena);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <img id="logo-preview-img" src="images/logo.png" style="max-width:100%;max-height:100%;object-fit:contain;">
+          </div>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;">Cambiar logo<input type="file" id="cfg-logo-input" accept="image/*" style="display:none;"></label>
+          <button class="btn btn-danger btn-sm" id="cfg-logo-reset">Usar el logo original</button>
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin-top:6px;">Se recomienda un PNG con fondo transparente.</p>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Título grande de portada</label><input id="cfg-herotitulo" placeholder="UNIFORMAR"></div>
+        <div class="field"><label>Frase debajo del título</label><input id="cfg-herotag" placeholder="ambos que te cuidan a vos"></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Color principal</label><div style="display:flex;gap:10px;align-items:center;"><input type="color" id="cfg-colorprimario" style="width:56px;height:42px;padding:4px;"><input id="cfg-colorprimario-hex" placeholder="#05396C"></div></div>
+        <div class="field"><label>Color de acento</label><div style="display:flex;gap:10px;align-items:center;"><input type="color" id="cfg-coloracento" style="width:56px;height:42px;padding:4px;"><input id="cfg-coloracento-hex" placeholder="#00AEEF"></div></div>
+      </div>
+      <div class="field">
+        <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="cfg-mostrarprecios"> Mostrar precios en la tienda (si lo destildás, se muestra "Consultar precio")</label>
+      </div>
+      <button class="btn btn-navy btn-sm" id="save-apariencia-btn">Guardar apariencia</button>
+    </div>
+
+    <div class="panel">
+      <h2>Datos de contacto</h2>
       <div class="row-2">
         <div class="field"><label>Nombre de la tienda</label><input id="cfg-nombre"></div>
         <div class="field"><label>WhatsApp (con código país, ej: 5492657296637)</label><input id="cfg-whatsapp"></div>
@@ -101,11 +128,12 @@
         <div class="field"><label>Ubicación</label><input id="cfg-ubicacion"></div>
       </div>
       <div class="field"><label>Mensaje de envíos (pie de página)</label><input id="cfg-envios"></div>
-      <button class="btn btn-navy btn-sm" id="save-config-btn">Guardar datos de la tienda</button>
+      <button class="btn btn-navy btn-sm" id="save-config-btn">Guardar datos de contacto</button>
     </div>
 
     <div class="panel">
       <h2>Productos <span id="count-tag" style="color:var(--muted);font-weight:500;font-size:.85rem;"></span></h2>
+      <p style="font-size:.82rem;color:var(--muted);margin:-8px 0 14px;">El orden de esta lista es el orden en que se ven en la tienda. Usá las flechas para reordenar.</p>
       <button class="btn btn-coral btn-sm" id="new-product-btn" style="margin-bottom:14px;">+ Nuevo producto</button>
       <div id="product-list"></div>
     </div>
