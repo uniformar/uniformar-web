@@ -1,0 +1,9 @@
+{
+  "name": "uniformar-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Catálogo online y gestión de stock para UniformAR",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

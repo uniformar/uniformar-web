@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administración · UniformAR</title>
+<meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+<style>
+  body { background: #F1EEE7; }
+  .admin-header { background: var(--navy); padding: 16px 0; }
+  .admin-header .container { display:flex; align-items:center; justify-content:space-between; }
+  .admin-header img { height: 30px; filter: brightness(0) invert(1); }
+  .admin-header .actions { display:flex; gap:10px; align-items:center; }
+  .admin-header a.view-store { color:#cddcec; font-size:.85rem; }
+  .admin-wrap { max-width: 980px; margin: 0 auto; padding: 26px 20px 80px; }
+  .login-box {
+    max-width: 380px; margin: 90px auto; background: var(--white); padding: 34px 30px;
+    border-radius: 20px; box-shadow: var(--shadow-lg); text-align:center;
+  }
+  .login-box img { height: 60px; margin: 0 auto 18px; }
+  .login-box input { width: 100%; padding: 13px 14px; border-radius: 10px; border: 1px solid var(--arena); margin-bottom: 12px; }
+  .panel { background: var(--white); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); margin-bottom: 24px; }
+  .panel h2 { font-size: 1.15rem; margin-bottom: 16px; }
+  .field { margin-bottom: 14px; }
+  .field label { display:block; font-weight:600; font-size:.85rem; margin-bottom:6px; color:var(--ink); }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--arena); background:#fff;
+  }
+  .field textarea { resize: vertical; min-height: 64px; }
+  .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .row-2,.row-3{ grid-template-columns:1fr; } }
+
+  .product-row {
+    display:flex; align-items:center; gap:14px; padding: 12px 10px; border-bottom: 1px solid #EFE9DF;
+  }
+  .product-row img { width:52px; height:52px; object-fit:cover; border-radius:8px; background:var(--arena); }
+  .product-row .pname { font-weight:700; flex:1; }
+  .product-row .pmeta { color:var(--muted); font-size:.82rem; }
+  .tag-off { background:#eee; color:#888; font-size:.7rem; padding:2px 8px; border-radius:999px; margin-left:8px; }
+
+  .color-block { border: 1.5px dashed var(--arena); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .color-head { display:flex; gap:10px; align-items:flex-end; margin-bottom:12px; }
+  .talle-row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+  .talle-row input { padding: 8px 10px; }
+  .talle-row .t-talle { width: 90px; }
+  .talle-row .t-stock { width: 90px; }
+  .talle-row .t-precio { flex:1; }
+  .imgs-grid { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 10px; }
+  .imgs-grid .img-item { position:relative; width:76px; height:76px; }
+  .imgs-grid img { width:100%; height:100%; object-fit:cover; border-radius:10px; }
+  .imgs-grid .rm { position:absolute; top:-6px; right:-6px; background:#c0392b; color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:.7rem; cursor:pointer; }
+  .upload-box {
+    border: 2px dashed var(--arena); border-radius: 10px; padding: 18px; text-align:center; cursor:pointer;
+    color: var(--muted); font-size: .85rem; width: 100%;
+  }
+  .save-bar {
+    position: sticky; bottom: 0; background: var(--white); border-top:1px solid var(--arena);
+    padding: 14px 20px; display:flex; justify-content:flex-end; gap:10px; margin-top: 20px; border-radius: 0 0 18px 18px;
+  }
+  .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#2f8f5b; margin-right:6px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="login-view" class="admin-wrap">
+  <div class="login-box">
+    <img src="images/logo-stacked.png" alt="UniformAR">
+    <h2 style="margin-bottom:16px;">Panel de administración</h2>
+    <input type="password" id="login-pass" placeholder="Contraseña">
+    <button class="btn btn-navy btn-block" id="login-btn">Ingresar</button>
+    <p id="login-error" style="color:#c0392b; font-size:.85rem; margin-top:12px;"></p>
+  </div>
+</div>
+
+<div id="app-view" class="hidden">
+  <div class="admin-header">
+    <div class="container">
+      <img src="images/logo.png" alt="UniformAR">
+      <div class="actions">
+        <a class="view-store" href="index.html" target="_blank">Ver tienda ↗</a>
+        <button class="btn btn-outline btn-sm" style="color:#fff;border-color:#4a6f97;" id="logout-btn">Salir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-wrap">
+
+    <div class="panel">
+      <h2>Datos de la tienda</h2>
+      <div class="row-2">
+        <div class="field"><label>Nombre de la tienda</label><input id="cfg-nombre"></div>
+        <div class="field"><label>WhatsApp (con código país, ej: 5492657296637)</label><input id="cfg-whatsapp"></div>
+      </div>
+      <div class="field"><label>Descripción corta (aparece en el inicio)</label><textarea id="cfg-desc"></textarea></div>
+      <div class="row-2">
+        <div class="field"><label>Usuario de Instagram (sin @)</label><input id="cfg-instagram"></div>
+        <div class="field"><label>Ubicación</label><input id="cfg-ubicacion"></div>
+      </div>
+      <div class="field"><label>Mensaje de envíos (pie de página)</label><input id="cfg-envios"></div>
+      <button class="btn btn-navy btn-sm" id="save-config-btn">Guardar datos de la tienda</button>
+    </div>
+
+    <div class="panel">
+      <h2>Productos <span id="count-tag" style="color:var(--muted);font-weight:500;font-size:.85rem;"></span></h2>
+      <button class="btn btn-coral btn-sm" id="new-product-btn" style="margin-bottom:14px;">+ Nuevo producto</button>
+      <div id="product-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div class="toast" id="toast"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>
