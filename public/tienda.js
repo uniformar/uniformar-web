@@ -41,7 +41,7 @@
 
   async function loadData() {
     try {
-      const res = await fetch("/api/data?t=" + Date.now(), { cache: "no-store" });
+      const res = await fetch("/.netlify/functions/get-data?t=" + Date.now(), { cache: "no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
       state.config = data.config || {};

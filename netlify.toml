@@ -4,8 +4,23 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api/data"
+  to = "/.netlify/functions/get-data"
+  status = 200
+
+[[redirects]]
+  from = "/api/save-data"
+  to = "/.netlify/functions/save-data"
+  status = 200
+
+[[redirects]]
+  from = "/api/check-password"
+  to = "/.netlify/functions/check-password"
+  status = 200
+
+[[redirects]]
+  from = "/api/diagnostico"
+  to = "/.netlify/functions/diagnostico"
   status = 200
 
 [[headers]]

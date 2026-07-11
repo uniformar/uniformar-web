@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const state = { config: {}, products: [], editing: null, pw: "" };
+  const state = { config: {}, products: [], editing: null, pw: "", loaded: false };
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   const uid = () => "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -19,7 +19,7 @@
     const pass = $("#login-pass").value;
     $("#login-error").textContent = "";
     try {
-      const res = await fetch("/api/check-password", {
+      const res = await fetch("/.netlify/functions/check-password", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pass })
       });
       const data = await res.json();
@@ -54,20 +54,27 @@
   /* ---------------- DATA ---------------- */
   async function loadData() {
     try {
-      const res = await fetch("/api/data?t=" + Date.now(), { cache: "no-store" });
+      const res = await fetch("/.netlify/functions/get-data?t=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) throw new Error("El servidor respondió con un error (HTTP " + res.status + ")");
       const data = await res.json();
       state.config = data.config || {};
       state.products = data.products || [];
+      state.loaded = true;
       renderConfig();
       renderProductList();
     } catch (err) {
-      toast("No se pudo cargar la información: " + err.message, true);
+      state.loaded = false;
+      toast("No se pudo cargar la información: " + err.message + ". No se va a poder guardar hasta que recargues la página y esto funcione.", true, true);
     }
   }
 
   async function saveAll(successMsg) {
+    if (!state.loaded) {
+      toast("No se cargaron los datos actuales todavía, así que no puedo guardar (para evitar borrar algo sin querer). Recargá la página e intentá de nuevo.", true, true);
+      return;
+    }
     try {
-      const res = await fetch("/api/save-data", {
+      const res = await fetch("/.netlify/functions/save-data", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: state.pw, config: state.config, products: state.products })
       });
