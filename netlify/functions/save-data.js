@@ -1,4 +1,4 @@
-const { getStore } = require("@netlify/blobs");
+const { uniformarStore } = require("./_store.js");
 
 exports.handler = async function (event) {
   if (event.httpMethod !== "POST") {
@@ -31,7 +31,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const store = getStore("uniformar");
+    const store = uniformarStore();
     const payload = { config: body.config, products: body.products, actualizado: new Date().toISOString() };
     await store.setJSON("store", payload);
     return {
@@ -42,7 +42,11 @@ exports.handler = async function (event) {
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "No se pudo guardar", detail: String(err) })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        error: "No se pudieron guardar los cambios en el servidor",
+        detail: String((err && err.message) || err)
+      })
     };
   }
 };
