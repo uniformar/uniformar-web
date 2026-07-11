@@ -54,7 +54,7 @@
   /* ---------------- DATA ---------------- */
   async function loadData() {
     try {
-      const res = await fetch("/api/data");
+      const res = await fetch("/api/data?t=" + Date.now(), { cache: "no-store" });
       const data = await res.json();
       state.config = data.config || {};
       state.products = data.products || [];

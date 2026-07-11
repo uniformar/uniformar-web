@@ -28,7 +28,12 @@ exports.handler = async function (event) {
     if (!payload.products) payload.products = [];
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+      },
       body: JSON.stringify(payload)
     };
   } catch (err) {
