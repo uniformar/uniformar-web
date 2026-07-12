@@ -139,6 +139,22 @@ Entrá a: `https://tu-sitio.netlify.app/admin.html`
 7. Para ocultar un producto sin borrarlo (por ejemplo, fuera de temporada), destildá
    "Visible en la tienda" al editarlo.
 
+8. **Reporte de reposición**: en la parte de abajo del panel, tocá "Ver reporte de
+   reposición" para ver qué talle/color de cada modelo está agotado o con poco
+   stock (vos elegís el umbral, por defecto 3 unidades). El botón "Copiar pedido
+   para el proveedor" te arma un texto listo para pegar en WhatsApp. También podés
+   entrar directo a `tu-sitio.netlify.app/admin.html?reporte=1` para que se abra
+   automáticamente al ingresar.
+
+9. **Importar productos desde CSV**: en "Importar productos (CSV)", subís un
+   archivo exportado de EmprendeTienda (o cualquier planilla guardada como CSV)
+   con una fila por variante (nombre, color, talle, stock, precio). El sistema
+   intenta adivinar qué columna es cada dato, pero siempre podés corregirlo a
+   mano antes de confirmar. Si un producto con el mismo nombre ya existe, tildá
+   "reemplazarlo" para actualizarlo en vez de duplicarlo. Las fotos no se
+   importan por este medio (las imágenes hay que cargarlas manualmente después,
+   editando cada producto) — es una limitación del formato CSV, no del importador.
+
 Todo lo que guardás ahí se ve **al instante** en la tienda pública (`index.html`) —
 no hay demora ni necesidad de volver a publicar nada.
 

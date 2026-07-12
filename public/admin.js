@@ -442,4 +442,251 @@
   }
 
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.editing) closeProductModal(); });
+
+  /* =========================================================================
+     REPORTE DE REPOSICIÓN
+     Muestra qué talle/color de cada modelo está agotado o con stock bajo,
+     para saber qué pedirle al proveedor.
+     Se puede activar tocando el botón, o automáticamente agregando
+     ?reporte=1 a la URL de este panel.
+     ========================================================================= */
+  function renderAdminTable(threshold) {
+    const cont = $("#restock-container");
+    const rows = [];
+    state.products.forEach((p) => {
+      (p.colores || []).forEach((c) => {
+        (c.talles || []).forEach((t) => {
+          const stock = Number(t.stock) || 0;
+          if (stock <= threshold) {
+            rows.push({ producto: p.nombre || "(sin nombre)", color: c.nombre || "—", talle: t.talle || "—", stock });
+          }
+        });
+      });
+    });
+    rows.sort((a, b) => a.stock - b.stock);
+
+    if (!rows.length) {
+      cont.innerHTML = `<p style="color:var(--muted);padding:10px 0;">✓ Ningún talle/color está por debajo de ${threshold} unidades. No hay nada urgente para reponer.</p>`;
+      return;
+    }
+
+    const trHtml = rows.map((r) => {
+      const estado = r.stock === 0 ? "agotado" : "bajo";
+      const label = r.stock === 0 ? "Agotado" : `${r.stock} unidad(es)`;
+      return `<tr class="${estado}">
+        <td>${r.producto}</td><td>${r.color}</td><td>${r.talle}</td>
+        <td><span class="stock-pill ${estado}">${label}</span></td>
+      </tr>`;
+    }).join("");
+
+    cont.innerHTML = `
+      <table class="restock-table">
+        <thead><tr><th>Producto</th><th>Color</th><th>Talle</th><th>Stock</th></tr></thead>
+        <tbody>${trHtml}</tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" id="restock-copy" style="margin-top:12px;">📋 Copiar pedido para el proveedor</button>`;
+
+    $("#restock-copy").addEventListener("click", () => {
+      const texto = "Pedido de reposición — UniformAR\n" + rows.map((r) =>
+        `• ${r.producto} — ${r.color} — talle ${r.talle} (${r.stock === 0 ? "agotado" : "quedan " + r.stock})`
+      ).join("\n");
+      navigator.clipboard.writeText(texto).then(
+        () => toast("Copiado. Pegalo en el chat de tu proveedor."),
+        () => toast("No se pudo copiar automáticamente.", true)
+      );
+    });
+  }
+
+  function toggleRestockReport(forceOpen) {
+    const cont = $("#restock-container");
+    const open = forceOpen !== undefined ? forceOpen : cont.classList.contains("hidden");
+    cont.classList.toggle("hidden", !open);
+    $("#restock-toggle").textContent = open ? "Ocultar reporte de reposición" : "Ver reporte de reposición";
+    if (open) renderAdminTable(Number($("#restock-threshold").value) || 0);
+  }
+
+  $("#restock-toggle").addEventListener("click", () => toggleRestockReport());
+  $("#restock-threshold").addEventListener("change", () => {
+    if (!$("#restock-container").classList.contains("hidden")) renderAdminTable(Number($("#restock-threshold").value) || 0);
+  });
+  // Parámetro ?reporte=1 en la URL abre el reporte automáticamente al entrar
+  if (new URLSearchParams(location.search).get("reporte") === "1") {
+    const openWhenReady = () => { if (state.loaded) toggleRestockReport(true); else setTimeout(openWhenReady, 300); };
+    openWhenReady();
+  }
+
+  /* =========================================================================
+     IMPORTACIÓN MASIVA (CSV)
+     Pensado para el export de EmprendeTienda u otra planilla: una fila por
+     variante (nombre + color + talle + stock + precio). No asumimos nombres
+     de columna fijos — el usuario mapea manualmente qué columna es cada dato,
+     con un intento de auto-detección por nombre.
+     ========================================================================= */
+  const importState = { headers: [], rows: [], mapping: {} };
+
+  function parseCSV(text) {
+    // Parser CSV simple con soporte de comillas y comas dentro de comillas.
+    const rows = []; let row = []; let field = ""; let inQuotes = false;
+    text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (c === '"') { inQuotes = false; }
+        else { field += c; }
+      } else if (c === '"') { inQuotes = true; }
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+      else { field += c; }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter((r) => r.some((f) => f.trim() !== ""));
+  }
+
+  const FIELD_DEFS = [
+    { key: "nombre", label: "Nombre del producto", required: true, guess: ["nombre", "producto", "name", "title", "articulo"] },
+    { key: "categoria", label: "Categoría", required: false, guess: ["categoria", "category", "rubro", "tipo"] },
+    { key: "color", label: "Color", required: true, guess: ["color", "colour"] },
+    { key: "talle", label: "Talle", required: true, guess: ["talle", "size", "talla"] },
+    { key: "stock", label: "Stock", required: true, guess: ["stock", "cantidad", "existencia", "qty"] },
+    { key: "precio", label: "Precio", required: true, guess: ["precio", "price", "importe"] },
+    { key: "descripcion", label: "Descripción", required: false, guess: ["descripcion", "detalle", "description"] }
+  ];
+
+  const COLOR_HEX = {
+    negro: "#1A1A1A", blanco: "#FFFFFF", celeste: "#7EC8E3", azul: "#05396C",
+    gris: "#9AA5B1", bordo: "#7A1F2B", verde: "#2E7D5B", rosa: "#E8A0C4",
+    violeta: "#7B5EA7", turquesa: "#2FB6A8", amarillo: "#E8C547", naranja: "#E08A3C",
+    rojo: "#C0392B", beige: "#D8C4AA", marino: "#0E2A4A"
+  };
+  function guessHex(nombreColor) {
+    const n = (nombreColor || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (const k in COLOR_HEX) if (n.includes(k)) return COLOR_HEX[k];
+    return "#B9C2CC";
+  }
+
+  $("#import-drop").addEventListener("click", (e) => { /* el label ya abre el input */ });
+  $("#import-file").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = parseCSV(String(reader.result));
+      if (parsed.length < 2) { toast("El archivo no tiene filas de datos.", true); return; }
+      importState.headers = parsed[0].map((h) => h.trim());
+      importState.rows = parsed.slice(1).map((r) => {
+        const o = {}; importState.headers.forEach((h, i) => (o[h] = (r[i] || "").trim())); return o;
+      });
+      // auto-detección de columnas por nombre
+      importState.mapping = {};
+      FIELD_DEFS.forEach((f) => {
+        const found = importState.headers.find((h) => f.guess.some((g) => h.toLowerCase().replace(/[^a-z]/g, "").includes(g)));
+        importState.mapping[f.key] = found || "";
+      });
+      renderImportMapping();
+      toast(`Archivo leído: ${importState.rows.length} fila(s). Revisá el mapeo de columnas.`);
+    };
+    reader.readAsText(file, "UTF-8");
+  });
+
+  function renderImportMapping() {
+    const cont = $("#import-mapping");
+    cont.classList.remove("hidden");
+    const options = (sel) => `<option value="">(ninguna)</option>` +
+      importState.headers.map((h) => `<option value="${h}" ${importState.mapping[sel] === h ? "selected" : ""}>${h}</option>`).join("");
+
+    cont.innerHTML = `
+      <h3 style="font-size:1rem;margin:18px 0 12px;">¿Qué columna es cada dato?</h3>
+      ${FIELD_DEFS.map((f) => `
+        <div class="mapping-row">
+          <label style="font-weight:600;font-size:.85rem;">${f.label}${f.required ? " *" : ""}</label>
+          <select data-map="${f.key}">${options(f.key)}</select>
+        </div>`).join("")}
+      <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted);margin:14px 0;">
+        <input type="checkbox" id="import-replace"> Si ya existe un producto con el mismo nombre, reemplazarlo en vez de duplicarlo
+      </label>
+      <div id="import-preview"></div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn btn-navy btn-sm" id="import-confirm">Importar</button>
+        <button class="btn btn-outline btn-sm" id="import-cancel">Cancelar</button>
+      </div>`;
+
+    $$("[data-map]", cont).forEach((sel) => sel.addEventListener("change", () => {
+      importState.mapping[sel.getAttribute("data-map")] = sel.value;
+      renderImportPreview();
+    }));
+    $("#import-cancel").addEventListener("click", () => {
+      cont.classList.add("hidden"); cont.innerHTML = ""; $("#import-file").value = "";
+    });
+    $("#import-confirm").addEventListener("click", confirmImport);
+    renderImportPreview();
+  }
+
+  function renderImportPreview() {
+    const m = importState.mapping;
+    const missing = FIELD_DEFS.filter((f) => f.required && !m[f.key]);
+    const box = $("#import-preview");
+    if (missing.length) {
+      box.innerHTML = `<p style="color:#c0392b;font-size:.85rem;">Falta indicar: ${missing.map((f) => f.label).join(", ")}.</p>`;
+      $("#import-confirm").disabled = true;
+      return;
+    }
+    $("#import-confirm").disabled = false;
+    const sample = importState.rows.slice(0, 5);
+    box.innerHTML = `
+      <p style="font-size:.82rem;color:var(--muted);margin:10px 0 6px;">Vista previa (primeras ${sample.length} de ${importState.rows.length} filas):</p>
+      <div style="overflow-x:auto;">
+        <table class="import-preview-table">
+          <thead><tr>${FIELD_DEFS.map((f) => `<th>${f.label}</th>`).join("")}</tr></thead>
+          <tbody>${sample.map((r) => `<tr>${FIELD_DEFS.map((f) => `<td>${m[f.key] ? (r[m[f.key]] || "") : ""}</td>`).join("")}</tr>`).join("")}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function confirmImport() {
+    const m = importState.mapping;
+    const replace = $("#import-replace").checked;
+    const grouped = new Map(); // nombre -> producto en construcción
+
+    importState.rows.forEach((r) => {
+      const nombre = (r[m.nombre] || "").trim();
+      if (!nombre) return;
+      const colorNombre = (r[m.color] || "").trim() || "Único";
+      const talle = (r[m.talle] || "").trim() || "Único";
+      const stock = Number((r[m.stock] || "0").replace(/[^\d.-]/g, "")) || 0;
+      const precio = Number((r[m.precio] || "0").replace(/[^\d.-]/g, "")) || 0;
+
+      if (!grouped.has(nombre)) {
+        grouped.set(nombre, {
+          id: uid(), nombre,
+          categoria: m.categoria ? (r[m.categoria] || "").trim() : "",
+          descripcion: m.descripcion ? (r[m.descripcion] || "").trim() : "",
+          activo: true, destacado: false, imagenes: [], colores: []
+        });
+      }
+      const prod = grouped.get(nombre);
+      let color = prod.colores.find((c) => c.nombre === colorNombre);
+      if (!color) { color = { nombre: colorNombre, hex: guessHex(colorNombre), talles: [] }; prod.colores.push(color); }
+      let t = color.talles.find((t) => t.talle === talle);
+      if (!t) { t = { talle, stock: 0, precio }; color.talles.push(t); }
+      t.stock += stock; t.precio = precio || t.precio;
+    });
+
+    let nuevos = 0, reemplazados = 0;
+    grouped.forEach((prod) => {
+      const idx = state.products.findIndex((p) => (p.nombre || "").trim().toLowerCase() === prod.nombre.trim().toLowerCase());
+      if (idx >= 0 && replace) {
+        prod.id = state.products[idx].id;
+        prod.imagenes = state.products[idx].imagenes; // conservamos fotos ya cargadas
+        state.products[idx] = prod; reemplazados++;
+      } else {
+        state.products.push(prod); nuevos++;
+      }
+    });
+
+    renderProductList();
+    $("#import-mapping").classList.add("hidden"); $("#import-mapping").innerHTML = "";
+    $("#import-file").value = "";
+    saveAll(`Importación lista: ${nuevos} producto(s) nuevo(s), ${reemplazados} reemplazado(s) ✓`);
+  }
 })();

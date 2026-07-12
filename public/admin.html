@@ -62,6 +62,26 @@
   }
   .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#2f8f5b; margin-right:6px; }
   .hidden { display:none !important; }
+
+  .restock-table { width:100%; border-collapse: collapse; font-size:.88rem; margin-top:14px; }
+  .restock-table th { text-align:left; padding:10px 12px; background:var(--color-gray-50); color:var(--muted); font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
+  .restock-table td { padding:10px 12px; border-bottom:1px solid var(--arena); }
+  .restock-table tr.agotado td { background: #FDEDED; }
+  .restock-table tr.bajo td { background: #FFF6E5; }
+  .stock-pill { display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; font-size:.78rem; }
+  .stock-pill.agotado { background:#F6C6C2; color:#8A2A22; }
+  .stock-pill.bajo { background:#FBE0A6; color:#7A5200; }
+  .stock-pill.ok { background:#C9E9D8; color:#155C3D; }
+
+  .import-drop {
+    border: 2px dashed var(--arena); border-radius: 14px; padding: 28px; text-align:center;
+    color: var(--muted); font-size: .9rem; cursor:pointer; margin-bottom: 14px;
+  }
+  .import-drop:hover { border-color: var(--azul); }
+  .mapping-row { display:grid; grid-template-columns: 160px 1fr; gap: 10px; align-items:center; margin-bottom:10px; }
+  .import-preview-table { width:100%; border-collapse:collapse; font-size:.82rem; margin: 14px 0; }
+  .import-preview-table th, .import-preview-table td { padding:7px 10px; border-bottom:1px solid var(--arena); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+  .import-preview-table th { background:var(--color-gray-50); font-size:.7rem; text-transform:uppercase; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -132,10 +152,41 @@
     </div>
 
     <div class="panel">
+      <h2>Importar productos (CSV)</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:-8px;">
+        Subí un CSV exportado de EmprendeTienda (o cualquier planilla) con una fila
+        por variante (nombre, color, talle, stock, precio). Vas a poder indicar qué
+        columna es cada dato antes de importar — no hace falta que los nombres coincidan.
+      </p>
+      <label class="import-drop" id="import-drop">
+        📄 Tocá para elegir un archivo .csv
+        <input type="file" id="import-file" accept=".csv,text/csv" style="display:none;">
+      </label>
+      <div id="import-mapping" class="hidden"></div>
+    </div>
+
+    <div class="panel">
       <h2>Productos <span id="count-tag" style="color:var(--muted);font-weight:500;font-size:.85rem;"></span></h2>
       <p style="font-size:.82rem;color:var(--muted);margin:-8px 0 14px;">El orden de esta lista es el orden en que se ven en la tienda. Usá las flechas para reordenar.</p>
       <button class="btn btn-coral btn-sm" id="new-product-btn" style="margin-bottom:14px;">+ Nuevo producto</button>
       <div id="product-list"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Reporte de reposición</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:-8px;">
+        Qué talle y color de cada modelo te está por faltar, para saber qué pedirle
+        a tu proveedor.
+      </p>
+      <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+        <button class="btn btn-outline btn-sm" id="restock-toggle">Ver reporte de reposición</button>
+        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);">
+          Considerar "stock bajo" cuando hay
+          <input type="number" id="restock-threshold" value="3" min="0" style="width:60px;padding:6px 8px;border-radius:8px;border:1px solid var(--arena);">
+          unidades o menos
+        </label>
+      </div>
+      <div id="restock-container" class="hidden"></div>
     </div>
 
   </div>

@@ -68,9 +68,15 @@
     const ig = c.instagram ? `https://www.instagram.com/${c.instagram.replace("@", "")}/` : "#";
     const wa = waLink(c.whatsapp, `Hola! Vengo de la web de ${c.nombreTienda || "UniformAR"} 🙂`);
     ["#ig-link", "#ig-link-2"].forEach((s) => ($(s).href = ig));
-    ["#wa-link", "#wa-link-2"].forEach((s) => ($(s).href = wa));
-    if (c.colorPrimario) document.documentElement.style.setProperty("--navy", c.colorPrimario);
-    if (c.colorAcento) document.documentElement.style.setProperty("--azul", c.colorAcento);
+    ["#wa-link", "#wa-link-2", "#wa-link-hero", "#wa-float"].forEach((s) => { const el = $(s); if (el) el.href = wa; });
+    if (c.colorPrimario) {
+      document.documentElement.style.setProperty("--navy", c.colorPrimario);
+      document.documentElement.style.setProperty("--color-primary", c.colorPrimario);
+    }
+    if (c.colorAcento) {
+      document.documentElement.style.setProperty("--azul", c.colorAcento);
+      document.documentElement.style.setProperty("--color-accent", c.colorAcento);
+    }
     if (c.logoDataUrl) {
       document.querySelectorAll(".brand-logo-img").forEach((img) => (img.src = c.logoDataUrl));
     }
@@ -217,7 +223,7 @@
         <button class="modal-close" id="modal-close">✕</button>
         <div class="modal-gallery">
           <div class="main-img"><img id="main-img" src="${mainImg}" alt="${p.nombre}"></div>
-          ${imgs.length > 1 ? `<div class="thumbs">${imgs.map((im, i) => `<img src="${im}" class="${i === 0 ? "active" : ""}" data-img="${im}">`).join("")}</div>` : ""}
+          ${imgs.length > 1 ? `<div class="thumbs">${imgs.map((im, i) => `<img src="${im}" class="${i === 0 ? "active" : ""}" data-img="${im}" loading="lazy">`).join("")}</div>` : ""}
         </div>
         <div class="modal-body">
           <span class="cat">${p.categoria || ""}</span>
@@ -266,6 +272,30 @@
     applyFilters();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+  /* ---------------- Menú móvil ---------------- */
+  const menuToggle = $("#menu-toggle");
+  const mainNav = $("#main-nav");
+  if (menuToggle && mainNav) {
+    menuToggle.addEventListener("click", () => {
+      const open = mainNav.classList.toggle("open");
+      menuToggle.classList.toggle("open", open);
+      menuToggle.setAttribute("aria-expanded", String(open));
+    });
+    mainNav.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => {
+      mainNav.classList.remove("open"); menuToggle.classList.remove("open"); menuToggle.setAttribute("aria-expanded", "false");
+    }));
+  }
+
+  /* ---------------- Drawer de filtros (mobile) ---------------- */
+  const filtersToggle = $("#filters-toggle");
+  const filtersPanel = $("#filters");
+  if (filtersToggle && filtersPanel) {
+    filtersToggle.addEventListener("click", () => {
+      const open = filtersPanel.classList.toggle("open");
+      filtersToggle.setAttribute("aria-expanded", String(open));
+    });
+  }
 
   $("#year").textContent = new Date().getFullYear();
   loadData();
